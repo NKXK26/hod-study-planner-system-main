@@ -1,0 +1,109 @@
+{
+  "name": "student-study-planner-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:export": "node scripts/export-database-prisma.js",
+    "db:seed": "node scripts/seed-from-inserts.js",
+    "db:setup": "node scripts/setup-database.js",
+    "db:add-units": "node scripts/add-missing-units.js",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron:build": "npm run build && electron-builder",
+    "electron:pack": "npm run build && electron-builder --dir",
+    "postbuild": "echo 'Build completed'"
+  },
+  "dependencies": {
+    "@azure/msal-browser": "^4.12.0",
+    "@azure/msal-react": "^3.0.12",
+    "@emailjs/browser": "^4.4.1",
+    "@heroicons/react": "^2.2.0",
+    "@heroui/system": "^2.4.13",
+    "@heroui/table": "^2.2.16",
+    "@heroui/theme": "^2.4.13",
+    "@lexical/react": "^0.38.2",
+    "@prisma/client": "^6.19.3",
+    "@supabase/supabase-js": "^2.56.0",
+    "bootstrap": "^5.3.6",
+    "exceljs": "^4.4.0",
+    "html2pdf.js": "^0.10.3",
+    "jsonwebtoken": "^9.0.2",
+    "lexical": "^0.38.2",
+    "localforage": "^1.10.0",
+    "logic-solver": "^2.0.1",
+    "next": "^15.5.6",
+    "nodemailer": "^7.0.5",
+    "papaparse": "^5.5.2",
+    "pdfjs-dist": "^3.11.174",
+    "prisma": "^6.5.0",
+    "rate-limiter-flexible": "^8.1.0",
+    "react": "^18.3.1",
+    "react-bootstrap": "^2.10.10",
+    "react-dom": "^18.3.1",
+    "react-icons": "^5.5.0",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^6.0.1",
+    "sweetalert2": "^11.26.2",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.11.1",
+    "@tailwindcss/postcss": "^4",
+    "concurrently": "^8.2.1",
+    "electron": "^41.0.2",
+    "electron-builder": "^24.13.3",
+    "electron-is-dev": "^2.0.0",
+    "supabase": "^2.22.12",
+    "tailwindcss": "^4",
+    "wait-on": "^7.0.3"
+  },
+  "build": {
+    "appId": "com.student.studyplanner",
+    "productName": "Student Study Planner",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "main.js",
+      "preload.js",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "prisma",
+        "to": "prisma",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "icon": "icon.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "description": "This is a Next.js project bootstrapped with create-next-app, packaged with Electron for desktop.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hamm0208/student-study-planner-system.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hamm0208/student-study-planner-system/issues"
+  },
+  "homepage": "https://github.com/hamm0208/student-study-planner-system#readme"
+}

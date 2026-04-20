@@ -1,0 +1,192 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+model Course {
+  ID              Int       @id @default(autoincrement()) @db.SmallInt
+  Code            String    @unique @db.VarChar
+  Name            String?   @db.VarChar
+  CreditsRequired Float?
+  Status          String?   @db.VarChar
+  Major           Major[]
+  Student         Student[]
+
+  @@unique([ID, Code])
+}
+
+model CourseIntake {
+  ID                 Int                  @id @unique @default(autoincrement()) @db.SmallInt
+  Status             String?              @db.VarChar
+  TermID             Int?                 @db.SmallInt
+  MajorID            Int?                 @db.SmallInt
+  Major              Major?               @relation(fields: [MajorID], references: [ID], onDelete: Cascade)
+  Term               Term?                @relation(fields: [TermID], references: [ID], onDelete: Cascade)
+  MasterStudyPlanner MasterStudyPlanner[]
+  Student            Student[]
+}
+
+model Major {
+  ID           Int            @unique @default(autoincrement()) @db.SmallInt
+  CourseID     Int            @db.SmallInt
+  CourseCode   String         @db.VarChar
+  Name         String?        @db.VarChar
+  Status       String?        @db.VarChar
+  CourseIntake CourseIntake[]
+  Course       Course         @relation(fields: [CourseID, CourseCode], references: [ID, Code], onDelete: SetDefault)
+  Student      Student[]
+
+  @@id([ID, CourseID, CourseCode])
+}
+
+model MasterStudyPlanner {
+  ID                         Int                          @id @unique @default(autoincrement()) @db.SmallInt
+  CourseIntakeID             Int                          @db.SmallInt
+  Status                     String                       @db.VarChar
+  CourseIntake               CourseIntake                 @relation(fields: [CourseIntakeID], references: [ID], onDelete: Cascade)
+  SemesterInStudyPlannerYear SemesterInStudyPlannerYear[]
+}
+
+model SemesterInStudyPlannerYear {
+  ID                         Int                          @id @unique @default(autoincrement()) @db.SmallInt
+  MasterStudyPlannerID       Int                          @db.SmallInt
+  Year                       Int                          @db.SmallInt
+  SemType                    String                       @db.VarChar
+  MasterStudyPlanner         MasterStudyPlanner           @relation(fields: [MasterStudyPlannerID], references: [ID], onDelete: Cascade)
+  UnitInSemesterStudyPlanner UnitInSemesterStudyPlanner[]
+}
+
+model Student {
+  StudentID                      Decimal                          @id @unique @db.Decimal
+  IntakeID                       Int                              @db.SmallInt
+  FirstName                      String?                          @db.VarChar
+  Status                         String?                          @db.VarChar
+  CourseID                       Int                              @db.SmallInt
+  MajorID                        Int                              @db.SmallInt
+  CreditCompleted                Float?
+  Course                         Course                           @relation(fields: [CourseID], references: [ID], onDelete: SetDefault)
+  CourseIntake                   CourseIntake                     @relation(fields: [IntakeID], references: [ID], onDelete: NoAction, onUpdate: NoAction)
+  Major                          Major                            @relation(fields: [MajorID], references: [ID], onDelete: SetDefault)
+  StudentStudyPlannerAmmendments StudentStudyPlannerAmmendments[]
+  UnitHistory                    UnitHistory[]
+}
+
+model StudentStudyPlannerAmmendments {
+  ID                                                    Int       @id @default(autoincrement()) @db.SmallInt
+  StudentID                                             Decimal   @db.Decimal
+  UnitCode                                              String?   @db.VarChar
+  NewUnitCode                                           String?   @db.VarChar
+  Action                                                String    @db.VarChar
+  TimeofAction                                          DateTime? @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  NewUnitTypeID                                         Int?      @db.SmallInt
+  Year                                                  Int       @db.SmallInt
+  SemIndex                                              Int       @db.SmallInt
+  Unit_StudentStudyPlannerAmmendments_NewUnitCodeToUnit Unit?     @relation("StudentStudyPlannerAmmendments_NewUnitCodeToUnit", fields: [NewUnitCode], references: [UnitCode], onDelete: Cascade)
+  UnitType                                              UnitType? @relation(fields: [NewUnitTypeID], references: [ID], onDelete: SetDefault)
+  Student                                               Student   @relation(fields: [StudentID], references: [StudentID], onDelete: Cascade)
+  Unit_StudentStudyPlannerAmmendments_UnitCodeToUnit    Unit?     @relation("StudentStudyPlannerAmmendments_UnitCodeToUnit", fields: [UnitCode], references: [UnitCode], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Term {
+  ID           Int            @id @default(autoincrement()) @db.SmallInt
+  Name         String
+  Year         Int?
+  Month        Int?           @db.SmallInt
+  Status       String?        @db.VarChar
+  SemType      String         @db.VarChar
+  CourseIntake CourseIntake[]
+  UnitHistory  UnitHistory[]
+}
+
+model Unit {
+  UnitCode                                                                        String                           @id @db.VarChar
+  Name                                                                            String                           @db.VarChar
+  CreditPoints                                                                    Float?
+  Availability                                                                    String                           @db.VarChar
+  StudentStudyPlannerAmmendments_StudentStudyPlannerAmmendments_NewUnitCodeToUnit StudentStudyPlannerAmmendments[] @relation("StudentStudyPlannerAmmendments_NewUnitCodeToUnit")
+  StudentStudyPlannerAmmendments_StudentStudyPlannerAmmendments_UnitCodeToUnit    StudentStudyPlannerAmmendments[] @relation("StudentStudyPlannerAmmendments_UnitCodeToUnit")
+  UnitHistory                                                                     UnitHistory[]
+  UnitInSemesterStudyPlanner                                                      UnitInSemesterStudyPlanner[]
+  UnitRequisiteRelationship_UnitRequisiteRelationship_RequisiteUnitCodeToUnit     UnitRequisiteRelationship[]      @relation("UnitRequisiteRelationship_RequisiteUnitCodeToUnit")
+  UnitRequisiteRelationship_UnitRequisiteRelationship_UnitCodeToUnit              UnitRequisiteRelationship[]      @relation("UnitRequisiteRelationship_UnitCodeToUnit")
+  UnitTermOffered                                                                 UnitTermOffered[]
+}
+
+model UnitHistory {
+  ID        Int     @id @default(autoincrement()) @db.SmallInt
+  StudentID Decimal @db.Decimal
+  UnitCode  String? @db.VarChar
+  Status    String? @db.VarChar
+  TermID    Int?    @db.SmallInt
+  Year      Int     @db.SmallInt
+  Student   Student @relation(fields: [StudentID], references: [StudentID], onDelete: Cascade)
+  Term      Term?   @relation(fields: [TermID], references: [ID], onDelete: Cascade)
+  Unit      Unit?   @relation(fields: [UnitCode], references: [UnitCode], onDelete: Cascade)
+}
+
+model UnitInSemesterStudyPlanner {
+  ID                           Int                        @id(map: "CourseTermStudyPlanner_pkey") @unique(map: "CourseTermStudyPlanner_ID_key") @default(autoincrement()) @db.SmallInt
+  UnitTypeID                   Int?                       @db.SmallInt
+  UnitCode                     String?                    @db.VarChar
+  SemesterInStudyPlannerYearID Int                        @db.SmallInt
+  SemesterInStudyPlannerYear   SemesterInStudyPlannerYear @relation(fields: [SemesterInStudyPlannerYearID], references: [ID], onDelete: Cascade, map: "CourseTermStudyPlanner_SemesterInStudyPlannerYearID_fkey")
+  Unit                         Unit?                      @relation(fields: [UnitCode], references: [UnitCode], onDelete: Cascade, map: "CourseTermStudyPlanner_UnitCode_fkey")
+  UnitType                     UnitType?                  @relation(fields: [UnitTypeID], references: [ID], onDelete: SetDefault, map: "CourseTermStudyPlanner_UnitTypeID_fkey")
+}
+
+model UnitRequisiteRelationship {
+  ID                                                     Int     @id @default(autoincrement()) @db.SmallInt
+  UnitCode                                               String  @db.VarChar
+  RequisiteUnitCode                                      String? @db.VarChar
+  UnitRelationship                                       String  @db.VarChar
+  LogicalOperators                                       String? @db.VarChar
+  MinCP                                                  Float?  @db.Real
+  Unit_UnitRequisiteRelationship_RequisiteUnitCodeToUnit Unit?   @relation("UnitRequisiteRelationship_RequisiteUnitCodeToUnit", fields: [RequisiteUnitCode], references: [UnitCode], onDelete: Cascade)
+  Unit_UnitRequisiteRelationship_UnitCodeToUnit          Unit    @relation("UnitRequisiteRelationship_UnitCodeToUnit", fields: [UnitCode], references: [UnitCode], onDelete: Cascade)
+}
+
+model UnitTermOffered {
+  UnitCode String @db.VarChar
+  ID       Int    @id @unique @default(autoincrement()) @db.SmallInt
+  TermType String @db.VarChar
+  Unit     Unit   @relation(fields: [UnitCode], references: [UnitCode], onDelete: Cascade)
+}
+
+model UnitType {
+  ID                             Int                              @unique @default(autoincrement()) @db.SmallInt
+  Name                           String                           @db.VarChar
+  Colour                         String?                          @db.VarChar
+  StudentStudyPlannerAmmendments StudentStudyPlannerAmmendments[]
+  UnitInSemesterStudyPlanner     UnitInSemesterStudyPlanner[]
+
+  @@id([ID, Name])
+}
+
+model User {
+  ID                Int             @default(autoincrement()) @db.SmallInt
+  FirstName         String?         @db.VarChar
+  LastName          String?         @db.VarChar
+  Email             String          @db.VarChar
+  UserGroupAccessID Int             @db.SmallInt
+  Password          String?         @db.VarChar
+  Type              String?         @db.VarChar
+  Status            String?         @db.VarChar
+  UpdatedAt         DateTime?       @db.Timestamp(6)
+  UserGroupAccess   UserGroupAccess @relation(fields: [UserGroupAccessID], references: [ID], onDelete: SetDefault)
+
+  @@id([ID, Email, UserGroupAccessID])
+}
+
+model UserGroupAccess {
+  ID     Int     @unique @default(autoincrement()) @db.SmallInt
+  Name   String? @db.VarChar
+  Access String? @db.VarChar
+  Module String  @db.VarChar
+  User   User[]
+
+  @@id([ID, Module])
+}
