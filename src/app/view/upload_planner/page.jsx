@@ -182,6 +182,7 @@ const UploadPlannerPage = () => {
             setMatchedUnits(matched);
             setSelectedUnitIds(matched.map((unit) => unit.id));
 
+            const matchedCodes = new Set(matched.map((unit) => unit.UnitCode));
             const missingCodesLocal = codes.filter((code) => !matchedCodes.has(code));
             setMissingCodes(missingCodesLocal);
 
@@ -400,13 +401,6 @@ const UploadPlannerPage = () => {
                             </tbody>
                         </table>
                         <p className="mt-3 text-sm text-gray-600">Selected units: {selectedUnitIds.length}</p>
-                    </div>
-                )}
-
-                {missingCodes.length > 0 && (
-                    <div className="mb-6 rounded border border-yellow-300 bg-yellow-50 p-4">
-                        <p className="font-medium text-yellow-800">No matching database unit found for these codes:</p>
-                        <p className="mt-2 text-sm text-yellow-900">{missingCodes.join(', ')}</p>
                     </div>
                 )}
 

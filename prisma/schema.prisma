@@ -292,14 +292,14 @@ model AuditLog {
   User      users?   @relation(fields: [UserID], references: [ID])
 
   @@map("audit_logs")
-}
-
-model StudyPlanner {
+}model StudyPlanner {
   id        Int      @id @default(autoincrement())
   name      String
   createdAt DateTime @default(now())
 
   units Unit[]
 }
+
+
 
 

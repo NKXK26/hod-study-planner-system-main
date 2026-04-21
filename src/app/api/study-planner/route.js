@@ -29,22 +29,46 @@ async function validateAuthenticatedRequest(req) {
 
 export async function GET(req) {
     const authResult = await validateAuthenticatedRequest(req);
-    if (authResult.error) {
-        return authResult.error;
-    }
+    if (authResult.error) return authResult.error;
 
     const url = new URL(req.url);
     const plannerId = url.searchParams.get('id');
-    const where = plannerId ? { id: parseInt(plannerId, 10) } : {};
+
+    const id = plannerId ? parseInt(plannerId, 10) : null;
+
+    if (plannerId && isNaN(id)) {
+        return NextResponse.json(
+            { success: false, message: 'Invalid planner ID' },
+            { status: 400 }
+        );
+    }
 
     const studyPlanners = await prisma.studyPlanner.findMany({
-        where,
+        where: id ? { id } : {},
+        orderBy: { createdAt: 'desc' },
         include: {
-            units: true,
+            units: {
+                select: {
+                    ID: true,
+                    UnitCode: true,
+                    Name: true,
+                },
+            },
         },
     });
 
-    return NextResponse.json({ success: true, data: studyPlanners });
+    if (id && studyPlanners.length === 0) {
+        return NextResponse.json(
+            { success: false, message: 'Study planner not found' },
+            { status: 404 }
+        );
+    }
+
+    return NextResponse.json({
+        success: true,
+        count: studyPlanners.length,
+        data: studyPlanners,
+    });
 }
 
 export async function POST(req) {
