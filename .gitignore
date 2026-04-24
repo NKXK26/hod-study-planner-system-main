@@ -20,6 +20,9 @@
 # production
 /build
 
+# electron-builder output (installer and unpacked app)
+/dist/
+
 # misc
 .DS_Store
 *.pem

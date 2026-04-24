@@ -13,7 +13,9 @@
     "db:seed": "node scripts/seed-from-inserts.js",
     "db:setup": "node scripts/setup-database.js",
     "db:add-units": "node scripts/add-missing-units.js",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron:dev": "concurrently -k -n next,electron -c blue,magenta \"npm run dev\" \"electron .\"",
+    "electron:fast": "concurrently -k -n next,electron -c blue,magenta \"npm run start\" \"electron .\"",
+    "electron:prep": "next build",
     "electron:build": "npm run build && electron-builder",
     "electron:pack": "npm run build && electron-builder --dir",
     "postbuild": "echo 'Build completed'"
@@ -71,7 +73,9 @@
     "files": [
       "out/**/*",
       "main.js",
-      "preload.js",
+      "preload.cjs",
+      "icon.ico",
+      "icon.png",
       "node_modules/**/*"
     ],
     "extraResources": [
@@ -91,7 +95,10 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico",
+      "installerHeaderIcon": "icon.ico"
     }
   },
   "description": "This is a Next.js project bootstrapped with create-next-app, packaged with Electron for desktop.",

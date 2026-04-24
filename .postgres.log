@@ -1,0 +1,5 @@
+2026-04-23 11:13:32.824 +08 [10720] LOG:  starting PostgreSQL 17.9 on x86_64-windows, compiled by msvc-19.44.35225, 64-bit
+2026-04-23 11:13:32.825 +08 [10720] LOG:  could not bind IPv4 address "127.0.0.1": Permission denied
+2026-04-23 11:13:32.825 +08 [10720] WARNING:  could not create listen socket for "127.0.0.1"
+2026-04-23 11:13:32.825 +08 [10720] FATAL:  could not create any TCP/IP sockets
+2026-04-23 11:13:32.829 +08 [10720] LOG:  database system is shut down

@@ -6,9 +6,19 @@ import { RoleProvider } from '@app/context/RoleContext';
 import msalInstance from '@app/msalInstance';
 import { useEffect, useState } from 'react';
 
+if (typeof window !== 'undefined') {
+	console.log('[ClientLayout] 🟢 MODULE LOADED in browser');
+}
+
 export default function ClientLayout({ children }) {
+	if (typeof window !== 'undefined') {
+		console.log('[ClientLayout] 🟡 RENDER');
+	}
 	const pathname = usePathname();
 	const isLoginPage = pathname === '/';
+	if (typeof window !== 'undefined') {
+		console.log('[ClientLayout] pathname=', pathname, 'isLoginPage=', isLoginPage);
+	}
 	const [isAuthenticated, setIsAuthenticated] = useState(false);
 
 	useEffect(() => {

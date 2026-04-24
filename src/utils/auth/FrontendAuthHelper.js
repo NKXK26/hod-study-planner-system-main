@@ -15,6 +15,12 @@ export default class SecureFrontendAuthHelper {
      * @returns {boolean} Whether dev mode is active
      */
     static isDevMode() {
+        // Always treat Electron desktop as dev mode — MSAL OAuth doesn't work in
+        // a packaged desktop app, and the preload injects a local Superadmin
+        // profile that the server recognizes via the x-dev-override header.
+        if (typeof window !== 'undefined' && window.desktopApp?.isElectron) {
+            return true;
+        }
         return process.env.NEXT_PUBLIC_MODE === 'DEV';
     }
 

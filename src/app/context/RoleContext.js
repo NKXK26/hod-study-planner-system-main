@@ -2,6 +2,10 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import SecureFrontendAuthHelper from '@utils/auth/FrontendAuthHelper';
 import SecureSessionManager from '@utils/auth/SimpleSessionManager';
 
+if (typeof window !== 'undefined') {
+    console.log('[RoleContext] 🟢 MODULE LOADED in browser');
+}
+
 const RoleContext = createContext({
     roles: [],
     selectedRoleName: '',
@@ -16,28 +20,65 @@ const RoleContext = createContext({
 });
 
 export const RoleProvider = ({ children }) => {
-    const [roles, setRoles] = useState([]);
-    const [selectedRoleName, setSelectedRoleName] = useState('');
-    const [permissions, setPermissions] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [userActualRoles, setUserActualRoles] = useState([]);
-    const [canSwitchRoles, setCanSwitchRoles] = useState(false);
+    if (typeof window !== 'undefined') {
+        console.log('[RoleContext] 🟡 RoleProvider RENDER');
+    }
+
+    // ===== ELECTRON SHORT-CIRCUIT =====
+    // In Electron we bypass MSAL auth entirely. The preload.cjs already
+    // injects a Superadmin userProfile. Rather than hit the API (which
+    // was hanging somewhere in DataCacher/localforage on Electron),
+    // just grant Superadmin + wildcard permissions synchronously so
+    // the UI renders immediately.
+    const isElectronBoot = typeof window !== 'undefined' && window.desktopApp?.isElectron === true;
+
+    const [roles, setRoles] = useState(isElectronBoot ? ['Superadmin'] : []);
+    const [selectedRoleName, setSelectedRoleName] = useState(isElectronBoot ? 'Superadmin' : '');
+    const [permissions, setPermissions] = useState(isElectronBoot ? ['*:*'] : []);
+    const [loading, setLoading] = useState(isElectronBoot ? false : true);
+    const [userActualRoles, setUserActualRoles] = useState(isElectronBoot ? ['Superadmin'] : []);
+    const [canSwitchRoles, setCanSwitchRoles] = useState(isElectronBoot ? true : false);
 
     // load roles and initial selected role from session
     useEffect(() => {
+        // ELECTRON SHORT-CIRCUIT: already primed with Superadmin; skip init.
+        if (typeof window !== 'undefined' && window.desktopApp?.isElectron === true) {
+            console.log('[RoleContext] ⚡ Electron detected — skipping init(), using Superadmin');
+            // Try an async refresh of the real roles list in the background,
+            // but don't block the UI on it.
+            (async () => {
+                try {
+                    const resp = await SecureFrontendAuthHelper.authenticatedFetch('/api/roles');
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        const roleNames = Array.isArray(data) ? data.map(r => r.Name || r.name).filter(Boolean) : [];
+                        if (roleNames.length > 0) {
+                            setRoles(roleNames);
+                            setUserActualRoles(roleNames);
+                        }
+                    }
+                } catch (e) { console.warn('[RoleContext] background role refresh failed:', e); }
+            })();
+            return;
+        }
+
         async function init() {
+            console.log('[RoleContext] ▶ init() START');
             try {
                 setLoading(true);
 
                 // Check if user is authenticated before trying to fetch roles
                 if (!SecureFrontendAuthHelper.isAuthenticated()) {
-                    console.log('User not authenticated, skipping role initialization');
+                    console.log('[RoleContext] User not authenticated, skipping role initialization');
                     setLoading(false);
                     return;
                 }
+                console.log('[RoleContext] ✓ auth check passed');
 
-                // In DEV mode, always enable role switching
-                const isDevMode = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_MODE === 'DEV';
+                // In DEV mode, always enable role switching.
+                // Electron desktop is also treated as dev mode (MSAL OAuth does not work there).
+                const isDevMode = typeof window !== 'undefined' &&
+                    (process.env.NEXT_PUBLIC_MODE === 'DEV' || window.desktopApp?.isElectron === true);
 
                 // Restore canSwitchRoles flag from localStorage immediately to prevent it from disappearing
                 const persistedCanSwitch = localStorage.getItem('canSwitchRoles');
@@ -67,11 +108,14 @@ export const RoleProvider = ({ children }) => {
                     };
                 }
 
+                console.log('[RoleContext] → fetching /api/roles');
                 const resp = await SecureFrontendAuthHelper.authenticatedFetch('/api/roles');
+                console.log('[RoleContext] ← /api/roles responded, ok=', resp.ok, 'status=', resp.status);
                 if (resp.ok) {
 					const data = await resp.json();
-					console.log('data', data)
+					console.log('[RoleContext] /api/roles data:', data);
                     const roleNames = Array.isArray(data) ? data.map(r => r.Name || r.name).filter(Boolean) : [];
+                    console.log('[RoleContext] roleNames:', roleNames);
                     setRoles(roleNames);
                     // Determine initial role from authenticated user profile in localStorage
                     // Do not default to Superadmin; use first assigned role or fallback to first available role
@@ -108,15 +152,18 @@ export const RoleProvider = ({ children }) => {
                     }
 
                     setSelectedRoleName(initialRoleName);
+                    console.log('[RoleContext] → calling fetchPermissionsForRoleName for:', initialRoleName);
                     await fetchPermissionsForRoleName(initialRoleName);
+                    console.log('[RoleContext] ← fetchPermissionsForRoleName COMPLETED');
                 } else {
-                    console.error('Failed to fetch roles:', resp.statusText);
+                    console.error('[RoleContext] Failed to fetch roles:', resp.statusText);
                 }
             } catch (error) {
-                console.error('Error initializing roles:', error);
+                console.error('[RoleContext] ✗ Error initializing roles:', error);
                 // Set loading to false even on error to prevent infinite loading state
                 setLoading(false);
             } finally {
+                console.log('[RoleContext] ▶ init() FINALLY — setting loading=false');
                 setLoading(false);
             }
         }
@@ -136,37 +183,49 @@ export const RoleProvider = ({ children }) => {
 
     // helper to fetch permissions by role name
     const fetchPermissionsForRoleName = async (roleName) => {
+        console.log('[RoleContext.fetchPermissions] ▶ START for role:', roleName);
         try {
-            if (!roleName) { setPermissions([]); localStorage.removeItem('devPermissions'); localStorage.removeItem('devSelectedRole'); return; }
+            if (!roleName) {
+                console.log('[RoleContext.fetchPermissions] no roleName — clearing perms');
+                setPermissions([]); localStorage.removeItem('devPermissions'); localStorage.removeItem('devSelectedRole'); return;
+            }
 
             // Check if user is authenticated before fetching permissions
             if (!SecureFrontendAuthHelper.isAuthenticated()) {
+                console.log('[RoleContext.fetchPermissions] not authenticated — clearing perms');
                 setPermissions([]);
                 return;
             }
 
             // We need role id; fetch roles with names+IDs
+            console.log('[RoleContext.fetchPermissions] → fetching /api/roles?return=ID,Name');
             const resp = await SecureFrontendAuthHelper.authenticatedFetch('/api/roles?return=ID,Name');
+            console.log('[RoleContext.fetchPermissions] ← /api/roles?return=ID,Name ok=', resp.ok);
             if (!resp.ok) {
                 setPermissions([]);
                 return;
             }
             const all = await resp.json();
+            console.log('[RoleContext.fetchPermissions] got roles+IDs, length:', Array.isArray(all) ? all.length : 'not array');
 
             const found = Array.isArray(all) ? all.find(r => (r.Name || r.name) === roleName) : null;
             if (!found) {
+                console.log('[RoleContext.fetchPermissions] role not found in list — clearing perms');
                 setPermissions([]);
                 return;
             }
 
             const id = found.ID || found.id;
+            console.log('[RoleContext.fetchPermissions] → fetching /api/roles/' + id + '/permissions');
             const permResp = await SecureFrontendAuthHelper.authenticatedFetch(`/api/roles/${id}/permissions`);
+            console.log('[RoleContext.fetchPermissions] ← permissions ok=', permResp.ok);
             if (!permResp.ok) {
                 setPermissions([]);
                 return;
             }
 
             const payload = await permResp.json();
+            console.log('[RoleContext.fetchPermissions] payload:', payload);
 
             let perms = Array.isArray(payload.permissions) ? payload.permissions
                 .filter(p => p.Granted)
@@ -203,17 +262,20 @@ export const RoleProvider = ({ children }) => {
             localStorage.setItem('devPermissions', JSON.stringify(perms));
             localStorage.setItem('devSelectedRole', roleName);
 
-            console.log('Final permissions set:', perms);
+            console.log('[RoleContext.fetchPermissions] ✓ Final permissions set:', perms);
         } catch (e) {
-            console.error('Error fetching permissions:', e);
+            console.error('[RoleContext.fetchPermissions] ✗ Error:', e);
             setPermissions([]);
             localStorage.removeItem('devPermissions');
+        } finally {
+            console.log('[RoleContext.fetchPermissions] ▶ END for role:', roleName);
         }
     };
 
     const setSelectedRoleByName = async (roleName) => {
         // In production, do not allow arbitrary role override via session flags
-        const isDevMode = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_MODE === 'DEV';
+        const isDevMode = typeof window !== 'undefined' &&
+            (process.env.NEXT_PUBLIC_MODE === 'DEV' || window.desktopApp?.isElectron === true);
         const actualRoleName = roleName || selectedRoleName || '';
         setSelectedRoleName(actualRoleName);
 

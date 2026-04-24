@@ -1,0 +1,11 @@
+(node:16900) electron: Failed to load URL: http://127.0.0.1:3000/view/dashboard with error: ERR_CONNECTION_RESET
+(Use `electron --trace-warnings ...` to show where the warning was created)
+Failed to launch desktop app: Error: ERR_CONNECTION_RESET (-101) loading 'http://127.0.0.1:3000/view/dashboard'
+    at rejectAndCleanup (node:electron/js2c/browser_init:2:89325)
+    at WebContents.finishListener (node:electron/js2c/browser_init:2:89487)
+    at WebContents.emit (node:events:508:28) {
+  errno: -101,
+  code: 'ERR_CONNECTION_RESET',
+  url: 'http://127.0.0.1:3000/view/dashboard'
+}
+[16900:0423/113522.063:ERROR:content\browser\gpu\gpu_process_host.cc:996] GPU process exited unexpectedly: exit_code=-1073740791
